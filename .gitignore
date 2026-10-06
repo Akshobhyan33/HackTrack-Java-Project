@@ -1,0 +1,28 @@
+# HackTrack credentials and tokens
+config/google-credentials.json
+config/gmail-tokens.json
+config/*.json
+
+# Local secrets / AI configuration (never commit API keys)
+.env
+.env.*
+config/*.properties
+config/*.env
+src/main/resources/application-local.properties
+
+# Build output
+target/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database backup
+*.db.bak
