@@ -37,6 +37,21 @@ $mvn = "C:\Users\DELL\maven-tmp\apache-maven-3.9.7\bin\mvn.cmd"
 # http://localhost:8080
 ```
 
+### Deployment Environment Variables
+
+All optional; the defaults keep local development exactly as before.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` | `8080` | HTTP port (`server.port=${PORT:8080}`). |
+| `HACKTRACK_DB_PATH` | `hacktrack.db` | SQLite file path (`hacktrack.dao.Database`). The Docker image sets `/data/hacktrack.db`; mount a persistent volume at `/data` — never at `/app`, which holds the JAR. |
+| `GMAIL_REDIRECT_URI` | `http://localhost:8080/api/gmail/callback` | Gmail OAuth callback (`hacktrack.service.GmailService`). At deployment set it to the HTTPS callback URL, which must also be authorized in the Google Cloud OAuth client. |
+| `GEMINI_API_KEY` | — | Key for the optional AI feature (see below). |
+
+Docker build files (`Dockerfile`, `.dockerignore`) live in the repo root. `config/`
+(credentials, Gmail tokens, local properties) is excluded from the build context and
+must be provided at runtime via environment variables / mounted volumes.
+
 ### AI Schedule Extraction (optional feature)
 
 The AI feature reads a hackathon's official website and suggests stage dates. It is

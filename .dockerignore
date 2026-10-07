@@ -1,0 +1,48 @@
+# Git metadata
+.git
+.gitignore
+.gitattributes
+
+# IDE / editor files
+.idea/
+*.iml
+.vscode/
+*.ipr
+*.iws
+
+# Build output
+target/
+*.class
+
+# Secrets and local configuration — never enter the image
+config/
+.env
+.env.*
+*.properties.local
+
+# Local database files
+hacktrack.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.bak
+
+# Logs
+*.log
+server.log
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+
+# Docs / misc not needed at build time
+Documentation/
+PROJECT_CONTEXT.md
+README.md
+LICENSE
+
+# OS junk
+**/.DS_Store
+Thumbs.db
+desktop.ini

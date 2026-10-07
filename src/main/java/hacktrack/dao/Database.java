@@ -6,8 +6,18 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class Database {
-    private static final String URL = "jdbc:sqlite:hacktrack.db";
+    private static final String URL = "jdbc:sqlite:" + resolveDbPath();
     private static boolean initialized = false;
+
+    /**
+     * SQLite file location. Defaults to hacktrack.db (local development) and can be
+     * overridden with the HACKTRACK_DB_PATH environment variable, e.g.
+     * HACKTRACK_DB_PATH=/data/hacktrack.db when running in Docker.
+     */
+    private static String resolveDbPath() {
+        String path = System.getenv("HACKTRACK_DB_PATH");
+        return (path == null || path.isBlank()) ? "hacktrack.db" : path.trim();
+    }
 
     public static synchronized void initialize() {
         if (initialized) return;

@@ -36,7 +36,10 @@ public class GmailService {
     private static final String CREDENTIALS_PATH = "config/google-credentials.json";
     private static final String TOKENS_DIR = "config";
     private static final String TOKENS_FILE = "gmail-tokens.json";
-    private static final String REDIRECT_URI = "http://localhost:8080/api/gmail/callback";
+    private static final String DEFAULT_REDIRECT_URI = "http://localhost:8080/api/gmail/callback";
+    // Override with GMAIL_REDIRECT_URI when deployed (must match a redirect URI
+    // authorized in the Google Cloud OAuth client). Default keeps local flow unchanged.
+    private static final String REDIRECT_URI = resolveRedirectUri();
     private static final Set<String> SCOPES = Set.of(
             GmailScopes.GMAIL_SEND,
             GmailScopes.GMAIL_METADATA
@@ -207,6 +210,11 @@ public class GmailService {
     }
 
     // ── Private Helpers ──
+
+    private static String resolveRedirectUri() {
+        String uri = System.getenv("GMAIL_REDIRECT_URI");
+        return (uri == null || uri.isBlank()) ? DEFAULT_REDIRECT_URI : uri.trim();
+    }
 
     private static GoogleClientSecrets loadClientSecrets() throws IOException {
         try (Reader reader = new FileReader(CREDENTIALS_PATH)) {
