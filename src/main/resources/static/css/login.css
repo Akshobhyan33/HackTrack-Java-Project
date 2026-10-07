@@ -1,0 +1,275 @@
+/* ── Login / Sign Up page visuals ───────────────────────────────────────────
+   Loaded only by login.html so the dashboard (index.html) is unaffected.
+   Reuses the design tokens from css/style.css. */
+
+.auth-page {
+    background:
+        linear-gradient(rgba(79, 70, 229, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79, 70, 229, 0.045) 1px, transparent 1px),
+        radial-gradient(1100px 480px at 50% -12%, rgba(79, 70, 229, 0.12), transparent 62%),
+        radial-gradient(760px 420px at 102% 104%, rgba(99, 102, 241, 0.10), transparent 60%),
+        var(--gray-100);
+    background-size: 44px 44px, 44px 44px, auto, auto, auto;
+    background-attachment: fixed;
+}
+
+/* Soft floating glow orbs (decorative only) */
+.auth-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.auth-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(72px);
+    opacity: 0.55;
+}
+
+.orb-1 {
+    width: 380px;
+    height: 380px;
+    top: -110px;
+    left: -90px;
+    background: rgba(79, 70, 229, 0.35);
+    animation: orbFloat 18s ease-in-out infinite;
+}
+
+.orb-2 {
+    width: 330px;
+    height: 330px;
+    top: 34%;
+    right: -90px;
+    background: rgba(99, 102, 241, 0.28);
+    animation: orbFloat 24s ease-in-out infinite reverse;
+}
+
+.orb-3 {
+    width: 300px;
+    height: 300px;
+    bottom: -100px;
+    left: 28%;
+    background: rgba(67, 56, 202, 0.24);
+    animation: orbFloat 30s ease-in-out infinite;
+}
+
+@keyframes orbFloat {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(26px, -32px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-orb { animation: none !important; }
+}
+
+/* ── Centered auth card ── */
+.auth-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 52px 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.auth-card {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg), 0 24px 48px -24px rgba(49, 46, 129, 0.35);
+    width: 100%;
+    max-width: 440px;
+    padding: 32px;
+}
+
+.auth-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #1e1b4b 0%, #4338ca 45%, #6366f1 100%);
+}
+
+/* ── Brand block ── */
+.auth-brand {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.auth-brand-logo {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.55em;
+    color: #fff;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+    box-shadow: 0 8px 20px -6px rgba(67, 56, 202, 0.55);
+}
+
+.auth-title {
+    font-size: 1.3em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--gray-900);
+}
+
+.auth-subtitle {
+    font-size: 0.85em;
+    color: var(--gray-500);
+    margin-top: 6px;
+    line-height: 1.5;
+}
+
+/* ── Tabs ── */
+.auth-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 22px;
+}
+
+.auth-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 9px 10px;
+    font-size: 0.88em;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--gray-600);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.auth-tab:hover { color: var(--gray-800); }
+
+.auth-tab.active {
+    background: #fff;
+    color: var(--primary);
+    box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--gray-200);
+}
+
+/* ── Fields ── */
+.auth-card label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 0.85em;
+    color: var(--gray-700);
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    font-size: 0.9em;
+    font-family: inherit;
+    color: var(--gray-800);
+    background: #fff;
+    margin-bottom: 16px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.auth-card input::placeholder { color: var(--gray-400); }
+
+.auth-card input:hover { border-color: var(--gray-400); }
+
+.auth-card input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.auth-hint {
+    font-size: 0.76em;
+    color: var(--gray-500);
+    margin: -8px 0 16px;
+}
+
+/* ── Submit ── */
+.auth-submit {
+    width: 100%;
+    padding: 11px;
+    font-size: 0.95em;
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid var(--primary);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: #fff;
+    box-shadow: 0 8px 18px -8px rgba(79, 70, 229, 0.65);
+}
+
+.auth-submit:hover {
+    background: linear-gradient(135deg, var(--primary-hover) 0%, #3730a3 100%);
+    border-color: var(--primary-hover);
+}
+
+/* ── Messages ── */
+.auth-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 11px 13px;
+    border-radius: var(--radius);
+    font-size: 0.85em;
+    line-height: 1.45;
+    font-weight: 500;
+    animation: messageIn 0.18s ease;
+}
+
+@keyframes messageIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-message.error {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid #fecaca;
+}
+
+.auth-message.error::before { content: "\26A0\FE0E"; }
+
+.auth-message.success {
+    background: var(--success-light);
+    color: var(--success);
+    border: 1px solid #bbf7d0;
+}
+
+.auth-message.success::before { content: "\2713\FE0E"; }
+
+/* ── Card footnote ── */
+.auth-footnote {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-100);
+    text-align: center;
+    font-size: 0.75em;
+    color: var(--gray-400);
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .auth-main { padding: 28px 14px; }
+    .auth-card { padding: 26px 18px; border-radius: 14px; }
+    .auth-title { font-size: 1.15em; }
+    .auth-brand-logo { width: 50px; height: 50px; font-size: 1.4em; }
+}

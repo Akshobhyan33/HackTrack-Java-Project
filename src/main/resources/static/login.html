@@ -5,10 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HackTrack - Sign In</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="auth-page">
+    <div class="auth-bg" aria-hidden="true">
+        <span class="auth-orb orb-1"></span>
+        <span class="auth-orb orb-2"></span>
+        <span class="auth-orb orb-3"></span>
+    </div>
+
     <header>
         <div class="header-content">
             <div class="header-left">
@@ -22,7 +29,13 @@
     </header>
 
     <main class="auth-main">
-        <div class="auth-card">
+        <section class="auth-card">
+            <div class="auth-brand">
+                <div class="auth-brand-logo">&#9889;</div>
+                <h2 class="auth-title">Welcome to HackTrack</h2>
+                <p class="auth-subtitle">Sign in to track your hackathons, or create an account to get started.</p>
+            </div>
+
             <div class="auth-tabs">
                 <button type="button" id="loginTab" class="auth-tab active" onclick="switchTab('login')">Log In</button>
                 <button type="button" id="signupTab" class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
@@ -53,8 +66,14 @@
             </form>
 
             <div id="authMessage" class="auth-message hidden"></div>
-        </div>
+
+            <p class="auth-footnote">HackTrack &mdash; Stage-Aware Hackathon Tracking &amp; Elimination-Aware Reminder System</p>
+        </section>
     </main>
+
+    <footer>
+        <p>HackTrack &mdash; Stage-Aware Hackathon Tracking &amp; Elimination-Aware Reminder System</p>
+    </footer>
 
     <script>
         function switchTab(tab) {
