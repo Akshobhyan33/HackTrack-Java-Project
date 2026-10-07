@@ -27,33 +27,52 @@ public class HistoryDAO {
         return -1;
     }
 
-    public static List<ParticipationHistory> getAll() {
+    public static List<ParticipationHistory> getAllForOwner(int ownerId) {
         List<ParticipationHistory> list = new ArrayList<>();
         String sql = """
             SELECT ph.id, ph.hackathonId, h.name as hackathonName, ph.finalOutcome, ph.completedAt
             FROM participation_history ph
             JOIN hackathons h ON ph.hackathonId = h.id
+            WHERE h.ownerId = ?
             ORDER BY ph.completedAt DESC
         """;
         try (Connection conn = Database.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
-            while (rs.next()) {
-                ParticipationHistory ph = new ParticipationHistory();
-                ph.setId(rs.getInt("id"));
-                ph.setHackathonId(rs.getInt("hackathonId"));
-                ph.setHackathonName(rs.getString("hackathonName"));
-                ph.setFinalOutcome(rs.getString("finalOutcome"));
-                String completedAtStr = rs.getString("completedAt");
-                if (completedAtStr != null) {
-                    ph.setCompletedAt(LocalDateTime.parse(completedAtStr.replace(' ', 'T')));
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, ownerId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    ParticipationHistory ph = new ParticipationHistory();
+                    ph.setId(rs.getInt("id"));
+                    ph.setHackathonId(rs.getInt("hackathonId"));
+                    ph.setHackathonName(rs.getString("hackathonName"));
+                    ph.setFinalOutcome(rs.getString("finalOutcome"));
+                    String completedAtStr = rs.getString("completedAt");
+                    if (completedAtStr != null) {
+                        ph.setCompletedAt(LocalDateTime.parse(completedAtStr.replace(' ', 'T')));
+                    }
+                    list.add(ph);
                 }
-                list.add(ph);
             }
         } catch (SQLException e) {
             System.err.println("Error getting participation history: " + e.getMessage());
         }
         return list;
+    }
+
+    // Hackathon a history row belongs to (null when the row does not exist).
+    // Used to verify ownership before deleting.
+    public static Integer getHackathonId(int id) {
+        String sql = "SELECT hackathonId FROM participation_history WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) return rs.getInt("hackathonId");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting participation history hackathon: " + e.getMessage());
+        }
+        return null;
     }
 
     public static boolean hasHistoryForHackathon(int hackathonId) {

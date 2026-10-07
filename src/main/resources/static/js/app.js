@@ -3,12 +3,42 @@ let allHackathons = [];
 let selectedHackathonId = null;
 
 // ── Initialization ──
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await loadCurrentUser();
+    if (!user) return; // redirect to the login page already triggered
     loadHackathons();
     loadHistory();
     loadGmailStatus();
     checkGmailCallback();
 });
+
+// ── Authentication ──
+async function loadCurrentUser() {
+    try {
+        const res = await fetch('/api/auth/me');
+        if (res.status === 401) {
+            window.location.href = '/login.html';
+            return null;
+        }
+        if (!res.ok) return null;
+        const user = await res.json();
+        const chip = document.getElementById('userChip');
+        if (chip) chip.textContent = user.name + ' · ' + user.email;
+        return user;
+    } catch (e) {
+        console.error('Failed to load current user:', e);
+        return null;
+    }
+}
+
+async function logout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+        // Session may already be gone; go to the login page either way.
+    }
+    window.location.href = '/login.html';
+}
 
 // ── API helpers ──
 async function apiFetch(url, options = {}) {
@@ -16,6 +46,10 @@ async function apiFetch(url, options = {}) {
         headers: { 'Content-Type': 'application/json' },
         ...options
     });
+    if (res.status === 401) {
+        window.location.href = '/login.html';
+        throw new Error('Not signed in.');
+    }
     if (!res.ok) {
         const text = await res.text();
         throw new Error(`API error ${res.status}: ${text}`);
@@ -39,6 +73,10 @@ async function aiApiFetch(url, options = {}) {
         headers: { 'Content-Type': 'application/json' },
         ...options
     });
+    if (res.status === 401) {
+        window.location.href = '/login.html';
+        throw new Error('Not signed in.');
+    }
     let data = null;
     try {
         data = await res.json();

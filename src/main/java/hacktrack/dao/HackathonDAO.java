@@ -17,7 +17,7 @@ public class HackathonDAO {
 
     // INSERT a new hackathon
     public static int insert(Hackathon h) {
-        String sql = "INSERT INTO hackathons (name, websiteUrl, isStarred, createdAt) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO hackathons (name, websiteUrl, isStarred, createdAt, ownerId) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = Database.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
 
@@ -25,6 +25,7 @@ public class HackathonDAO {
             pstmt.setString(2, h.getWebsiteUrl());
             pstmt.setInt(3, h.isStarred() ? 1 : 0);
             pstmt.setString(4, h.getCreatedAt().toString());
+            pstmt.setInt(5, h.getOwnerId());
 
             pstmt.executeUpdate();
 
@@ -56,6 +57,7 @@ public class HackathonDAO {
                     h.setWebsiteUrl(rs.getString("websiteUrl"));
                     h.setStarred(rs.getInt("isStarred") == 1);
                     h.setCreatedAt(parseDateTime(rs.getString("createdAt")));
+                    h.setOwnerId(rs.getInt("ownerId"));
                     return h;
                 }
             }
@@ -66,6 +68,7 @@ public class HackathonDAO {
     }
 
     // GET all hackathons, ordered by starred first then name
+    // (used by the reminder scheduler, which runs across every account)
     public static java.util.List<Hackathon> getAll() {
         java.util.List<Hackathon> list = new java.util.ArrayList<>();
         String sql = "SELECT * FROM hackathons ORDER BY isStarred DESC, name ASC";
@@ -80,12 +83,56 @@ public class HackathonDAO {
                 h.setWebsiteUrl(rs.getString("websiteUrl"));
                 h.setStarred(rs.getInt("isStarred") == 1);
                 h.setCreatedAt(parseDateTime(rs.getString("createdAt")));
+                h.setOwnerId(rs.getInt("ownerId"));
                 list.add(h);
             }
         } catch (SQLException e) {
             System.err.println("Error getting all hackathons: " + e.getMessage());
         }
         return list;
+    }
+
+    // GET only the hackathons owned by one user
+    public static java.util.List<Hackathon> getAllForOwner(int ownerId) {
+        java.util.List<Hackathon> list = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM hackathons WHERE ownerId = ? ORDER BY isStarred DESC, name ASC";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, ownerId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Hackathon h = new Hackathon();
+                    h.setId(rs.getInt("id"));
+                    h.setName(rs.getString("name"));
+                    h.setWebsiteUrl(rs.getString("websiteUrl"));
+                    h.setStarred(rs.getInt("isStarred") == 1);
+                    h.setCreatedAt(parseDateTime(rs.getString("createdAt")));
+                    h.setOwnerId(rs.getInt("ownerId"));
+                    list.add(h);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting hackathons for owner: " + e.getMessage());
+        }
+        return list;
+    }
+
+    // Ownership check used by every by-ID endpoint
+    public static boolean isOwnedBy(int hackathonId, int ownerId) {
+        String sql = "SELECT COUNT(*) FROM hackathons WHERE id = ? AND ownerId = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, hackathonId);
+            pstmt.setInt(2, ownerId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking hackathon ownership: " + e.getMessage());
+        }
+        return false;
     }
 
     // UPDATE an existing hackathon

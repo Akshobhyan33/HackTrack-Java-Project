@@ -31,12 +31,13 @@ public class ReminderLogic {
     public static int checkAndFireReminders() {
         int remindersFired = 0;
 
-        String recipientEmail = EmailSettingsDAO.getRecipientEmail();
         boolean gmailConnected = GmailService.isConnected();
 
         List<Hackathon> hackathons = HackathonDAO.getAll();
 
         for (Hackathon hackathon : hackathons) {
+            // Reminders are delivered to the owner's own recipient address.
+            String recipientEmail = EmailSettingsDAO.getRecipientEmail(hackathon.getOwnerId());
             List<Stage> stages = StageDAO.getByHackathonId(hackathon.getId());
 
             for (Stage stage : stages) {

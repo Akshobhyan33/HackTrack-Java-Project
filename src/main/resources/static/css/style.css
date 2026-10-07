@@ -867,3 +867,135 @@ footer {
     .header-subtitle { display: none; }
     .hackathon-card .meta { display: none; }
 }
+
+/* ── Header user box ── */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 5px 8px 5px 14px;
+    border-radius: 20px;
+}
+
+.user-chip {
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.85);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-box .btn-ghost {
+    color: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.12);
+}
+
+.user-box .btn-ghost:hover {
+    background: rgba(255,255,255,0.22);
+    color: #fff;
+}
+
+/* ── Login / Sign up ── */
+.auth-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+}
+
+.auth-card {
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    width: 100%;
+    max-width: 420px;
+    padding: 28px;
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--gray-100);
+    padding: 4px;
+    border-radius: var(--radius);
+    margin-bottom: 22px;
+}
+
+.auth-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 9px 10px;
+    font-size: 0.88em;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--gray-600);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.auth-tab.active {
+    background: #fff;
+    color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.auth-card label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.85em;
+    color: var(--gray-700);
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    font-size: 0.9em;
+    font-family: inherit;
+    margin-bottom: 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.auth-card input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+
+.auth-hint {
+    font-size: 0.76em;
+    color: var(--gray-500);
+    margin: -8px 0 14px;
+}
+
+.auth-submit {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.95em;
+}
+
+.auth-message {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+.auth-message.error {
+    background: var(--danger-light);
+    color: var(--danger);
+}

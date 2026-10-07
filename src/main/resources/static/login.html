@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HackTrack - Sign In</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="header-left">
+                <div class="logo">&#9889;</div>
+                <div>
+                    <h1>HackTrack</h1>
+                    <p class="header-subtitle">Hackathon Tracking &amp; Stage Management</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="auth-main">
+        <div class="auth-card">
+            <div class="auth-tabs">
+                <button type="button" id="loginTab" class="auth-tab active" onclick="switchTab('login')">Log In</button>
+                <button type="button" id="signupTab" class="auth-tab" onclick="switchTab('signup')">Sign Up</button>
+            </div>
+
+            <form id="loginForm" onsubmit="return submitLogin(event)">
+                <label for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" autocomplete="email" required>
+
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" autocomplete="current-password" required>
+
+                <button type="submit" class="btn btn-primary auth-submit">Log In</button>
+            </form>
+
+            <form id="signupForm" class="hidden" onsubmit="return submitSignup(event)">
+                <label for="signupName">Name</label>
+                <input type="text" id="signupName" autocomplete="name" required>
+
+                <label for="signupEmail">Email</label>
+                <input type="email" id="signupEmail" autocomplete="email" required>
+
+                <label for="signupPassword">Password</label>
+                <input type="password" id="signupPassword" autocomplete="new-password" minlength="6" required>
+                <p class="auth-hint">At least 6 characters.</p>
+
+                <button type="submit" class="btn btn-primary auth-submit">Create Account</button>
+            </form>
+
+            <div id="authMessage" class="auth-message hidden"></div>
+        </div>
+    </main>
+
+    <script>
+        function switchTab(tab) {
+            const isLogin = tab === 'login';
+            document.getElementById('loginTab').classList.toggle('active', isLogin);
+            document.getElementById('signupTab').classList.toggle('active', !isLogin);
+            document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+            document.getElementById('signupForm').classList.toggle('hidden', isLogin);
+            hideMessage();
+        }
+
+        async function postJson(path, payload) {
+            const res = await fetch(path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            let data = null;
+            try { data = await res.json(); } catch (e) { data = null; }
+            if (!res.ok) {
+                throw new Error((data && data.error) || 'Request failed. Please try again.');
+            }
+            return data;
+        }
+
+        async function submitLogin(event) {
+            event.preventDefault();
+            hideMessage();
+            try {
+                await postJson('/api/auth/login', {
+                    email: document.getElementById('loginEmail').value.trim(),
+                    password: document.getElementById('loginPassword').value
+                });
+                window.location.href = '/';
+            } catch (e) {
+                showMessage(e.message);
+            }
+            return false;
+        }
+
+        async function submitSignup(event) {
+            event.preventDefault();
+            hideMessage();
+            try {
+                await postJson('/api/auth/signup', {
+                    name: document.getElementById('signupName').value.trim(),
+                    email: document.getElementById('signupEmail').value.trim(),
+                    password: document.getElementById('signupPassword').value
+                });
+                window.location.href = '/';
+            } catch (e) {
+                showMessage(e.message);
+            }
+            return false;
+        }
+
+        function showMessage(text) {
+            const el = document.getElementById('authMessage');
+            el.textContent = text;
+            el.className = 'auth-message error';
+        }
+
+        function hideMessage() {
+            const el = document.getElementById('authMessage');
+            el.textContent = '';
+            el.className = 'auth-message hidden';
+        }
+
+        // Already signed in? Go straight to the dashboard.
+        fetch('/api/auth/me').then(function (res) {
+            if (res.ok) window.location.href = '/';
+        }).catch(function () {});
+    </script>
+</body>
+</html>

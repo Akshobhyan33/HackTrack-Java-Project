@@ -10,6 +10,7 @@ import hacktrack.model.ParticipationHistory;
 import hacktrack.model.Stage;
 import hacktrack.status.StageStatus;
 import hacktrack.service.GmailService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
@@ -27,8 +28,11 @@ public class HackathonController {
     // ── Hackathon endpoints ──
 
     @GetMapping("/hackathons")
-    public List<Map<String, Object>> getAllHackathons() {
-        List<Hackathon> hackathons = HackathonDAO.getAll();
+    public ResponseEntity<List<Map<String, Object>>> getAllHackathons(HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
+        List<Hackathon> hackathons = HackathonDAO.getAllForOwner(userId);
         for (Hackathon h : hackathons) {
             List<Stage> stages = StageDAO.getByHackathonId(h.getId());
             h.setStageCount(stages.size());
@@ -48,13 +52,17 @@ public class HackathonController {
             map.put("statusString", h.getStatusString());
             result.add(map);
         }
-        return result;
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/hackathons/{id}")
-    public ResponseEntity<Map<String, Object>> getHackathon(@PathVariable int id) {
+    public ResponseEntity<Map<String, Object>> getHackathon(@PathVariable int id, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         Hackathon h = HackathonDAO.getById(id);
         if (h == null) return ResponseEntity.notFound().build();
+        if (h.getOwnerId() != userId) return forbidden();
 
         List<Stage> stages = StageDAO.getByHackathonId(h.getId());
         h.setStageCount(stages.size());
@@ -72,7 +80,11 @@ public class HackathonController {
     }
 
     @PostMapping("/hackathons")
-    public ResponseEntity<Map<String, Object>> createHackathon(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> createHackathon(@RequestBody Map<String, Object> body,
+                                                               HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         String name = (String) body.get("name");
         String url = (String) body.getOrDefault("websiteUrl", "");
 
@@ -81,6 +93,7 @@ public class HackathonController {
         }
 
         Hackathon h = new Hackathon(0, name.trim(), url != null ? url.trim() : "", false);
+        h.setOwnerId(userId);
         int newId = HackathonDAO.insert(h);
         if (newId <= 0) return ResponseEntity.internalServerError().build();
 
@@ -100,9 +113,14 @@ public class HackathonController {
     }
 
     @PutMapping("/hackathons/{id}")
-    public ResponseEntity<Map<String, Object>> updateHackathon(@PathVariable int id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> updateHackathon(@PathVariable int id, @RequestBody Map<String, Object> body,
+                                                               HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         Hackathon h = HackathonDAO.getById(id);
         if (h == null) return ResponseEntity.notFound().build();
+        if (h.getOwnerId() != userId) return forbidden();
 
         h.setName((String) body.getOrDefault("name", h.getName()));
         h.setWebsiteUrl((String) body.getOrDefault("websiteUrl", h.getWebsiteUrl()));
@@ -121,17 +139,30 @@ public class HackathonController {
     }
 
     @DeleteMapping("/hackathons/{id}")
-    public ResponseEntity<Void> deleteHackathon(@PathVariable int id) {
+    public ResponseEntity<Void> deleteHackathon(@PathVariable int id, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return ResponseEntity.status(401).build();
+
+        Hackathon h = HackathonDAO.getById(id);
+        if (h == null) return ResponseEntity.notFound().build();
+        if (h.getOwnerId() != userId) return ResponseEntity.status(403).build();
+
         boolean deleted = HackathonDAO.delete(id);
         return deleted ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
     }
 
     @PutMapping("/hackathons/{id}/toggle-star")
-    public ResponseEntity<Map<String, Object>> toggleStar(@PathVariable int id) {
+    public ResponseEntity<Map<String, Object>> toggleStar(@PathVariable int id, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
+        Hackathon h = HackathonDAO.getById(id);
+        if (h == null) return ResponseEntity.notFound().build();
+        if (h.getOwnerId() != userId) return forbidden();
+
         boolean toggled = HackathonDAO.toggleStar(id);
         if (!toggled) return ResponseEntity.notFound().build();
 
-        Hackathon h = HackathonDAO.getById(id);
         Map<String, Object> map = new HashMap<>();
         map.put("id", h.getId());
         map.put("starred", h.isStarred());
@@ -141,20 +172,29 @@ public class HackathonController {
     // ── Stage endpoints ──
 
     @GetMapping("/hackathons/{hackathonId}/stages")
-    public List<Map<String, Object>> getStages(@PathVariable int hackathonId) {
+    public ResponseEntity<List<Map<String, Object>>> getStages(@PathVariable int hackathonId, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+        if (!HackathonDAO.isOwnedBy(hackathonId, userId)) return ownershipFailure(hackathonId);
+
         List<Stage> stages = StageDAO.getByHackathonId(hackathonId);
         java.util.List<Map<String, Object>> result = new java.util.ArrayList<>();
         for (Stage s : stages) {
             Map<String, Object> map = stageToMap(s);
             result.add(map);
         }
-        return result;
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/hackathons/{hackathonId}/stages")
-    public ResponseEntity<Map<String, Object>> createStage(@PathVariable int hackathonId, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> createStage(@PathVariable int hackathonId, @RequestBody Map<String, Object> body,
+                                                           HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         Hackathon h = HackathonDAO.getById(hackathonId);
         if (h == null) return ResponseEntity.notFound().build();
+        if (h.getOwnerId() != userId) return forbidden();
 
         String name = (String) body.get("name");
         String deadline = (String) body.get("deadline");
@@ -176,9 +216,14 @@ public class HackathonController {
     }
 
     @PutMapping("/stages/{id}")
-    public ResponseEntity<Map<String, Object>> updateStage(@PathVariable int id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> updateStage(@PathVariable int id, @RequestBody Map<String, Object> body,
+                                                           HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         Stage stage = StageDAO.getById(id);
         if (stage == null) return ResponseEntity.notFound().build();
+        if (!HackathonDAO.isOwnedBy(stage.getHackathonId(), userId)) return forbidden();
 
         if (body.containsKey("name")) {
             stage.setName((String) body.get("name"));
@@ -238,7 +283,14 @@ public class HackathonController {
     }
 
     @DeleteMapping("/stages/{id}")
-    public ResponseEntity<Void> deleteStage(@PathVariable int id) {
+    public ResponseEntity<Void> deleteStage(@PathVariable int id, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return ResponseEntity.status(401).build();
+
+        Stage stage = StageDAO.getById(id);
+        if (stage == null) return ResponseEntity.notFound().build();
+        if (!HackathonDAO.isOwnedBy(stage.getHackathonId(), userId)) return ResponseEntity.status(403).build();
+
         boolean deleted = StageDAO.delete(id);
         return deleted ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
     }
@@ -246,7 +298,11 @@ public class HackathonController {
     // ── Next relevant stage ──
 
     @GetMapping("/hackathons/{hackathonId}/next-stage")
-    public ResponseEntity<Map<String, Object>> getNextStage(@PathVariable int hackathonId) {
+    public ResponseEntity<Map<String, Object>> getNextStage(@PathVariable int hackathonId, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+        if (!HackathonDAO.isOwnedBy(hackathonId, userId)) return ownershipFailure(hackathonId);
+
         Stage next = ProgressionEngine.getNextRelevantStage(hackathonId);
         if (next == null) return ResponseEntity.ok(null);
         return ResponseEntity.ok(stageToMap(next));
@@ -255,7 +311,15 @@ public class HackathonController {
     // ── Overall status ──
 
     @GetMapping("/hackathons/{hackathonId}/overall-status")
-    public ResponseEntity<Map<String, String>> getOverallStatus(@PathVariable int hackathonId) {
+    public ResponseEntity<Map<String, String>> getOverallStatus(@PathVariable int hackathonId, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return ResponseEntity.status(401).body(Map.of(
+                "error", "Authentication required.", "code", "UNAUTHENTICATED"));
+        if (!HackathonDAO.isOwnedBy(hackathonId, userId)) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "You do not have access to this hackathon.", "code", "FORBIDDEN"));
+        }
+
         String status = ProgressionEngine.calculateOverallStatus(hackathonId);
         Map<String, String> map = new HashMap<>();
         map.put("status", status);
@@ -265,8 +329,11 @@ public class HackathonController {
     // ── History endpoints ──
 
     @GetMapping("/history")
-    public List<Map<String, Object>> getHistory() {
-        List<ParticipationHistory> history = HistoryDAO.getAll();
+    public ResponseEntity<List<Map<String, Object>>> getHistory(HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
+        List<ParticipationHistory> history = HistoryDAO.getAllForOwner(userId);
         java.util.List<Map<String, Object>> result = new java.util.ArrayList<>();
         for (ParticipationHistory ph : history) {
             Map<String, Object> map = new HashMap<>();
@@ -277,14 +344,19 @@ public class HackathonController {
             map.put("completedAt", ph.getCompletedAt() != null ? ph.getCompletedAt().toString() : null);
             result.add(map);
         }
-        return result;
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/history")
-    public ResponseEntity<Map<String, Object>> addHistory(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> addHistory(@RequestBody Map<String, Object> body,
+                                                          HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         Integer hackathonId = (Integer) body.get("hackathonId");
         String outcome = (String) body.get("finalOutcome");
         if (hackathonId == null || outcome == null) return ResponseEntity.badRequest().build();
+        if (!HackathonDAO.isOwnedBy(hackathonId, userId)) return forbidden();
 
         int id = HistoryDAO.insert(hackathonId, outcome);
         if (id <= 0) return ResponseEntity.internalServerError().build();
@@ -297,7 +369,14 @@ public class HackathonController {
     }
 
     @DeleteMapping("/history/{id}")
-    public ResponseEntity<Void> deleteHistory(@PathVariable int id) {
+    public ResponseEntity<Void> deleteHistory(@PathVariable int id, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return ResponseEntity.status(401).build();
+
+        Integer hackathonId = HistoryDAO.getHackathonId(id);
+        if (hackathonId == null) return ResponseEntity.notFound().build();
+        if (!HackathonDAO.isOwnedBy(hackathonId, userId)) return ResponseEntity.status(403).build();
+
         boolean deleted = HistoryDAO.delete(id);
         return deleted ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
     }
@@ -305,11 +384,14 @@ public class HackathonController {
     // ── Gmail endpoints ──
 
     @GetMapping("/gmail/status")
-    public ResponseEntity<Map<String, Object>> getGmailStatus() {
+    public ResponseEntity<Map<String, Object>> getGmailStatus(HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         Map<String, Object> map = new HashMap<>();
         map.put("connected", GmailService.isConnected());
         map.put("email", GmailService.getUserEmail());
-        map.put("recipientEmail", EmailSettingsDAO.getRecipientEmail());
+        map.put("recipientEmail", EmailSettingsDAO.getRecipientEmail(userId));
         map.put("lastReminder", GmailService.getLastReminderInfo());
         return ResponseEntity.ok(map);
     }
@@ -343,12 +425,16 @@ public class HackathonController {
     }
 
     @PostMapping("/gmail/recipient")
-    public ResponseEntity<Map<String, Object>> setRecipientEmail(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Map<String, Object>> setRecipientEmail(@RequestBody Map<String, String> body,
+                                                                 HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         String email = body.get("email");
         if (email == null || email.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        boolean saved = EmailSettingsDAO.setRecipientEmail(email.trim());
+        boolean saved = EmailSettingsDAO.setRecipientEmail(userId, email.trim());
         Map<String, Object> map = new HashMap<>();
         map.put("success", saved);
         map.put("recipientEmail", email.trim());
@@ -356,9 +442,12 @@ public class HackathonController {
     }
 
     @PostMapping("/gmail/test")
-    public ResponseEntity<Map<String, Object>> sendTestEmail() {
+    public ResponseEntity<Map<String, Object>> sendTestEmail(HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) return unauthorized();
+
         Map<String, Object> map = new HashMap<>();
-        String recipient = EmailSettingsDAO.getRecipientEmail();
+        String recipient = EmailSettingsDAO.getRecipientEmail(userId);
         if (!GmailService.isConnected()) {
             map.put("success", false);
             map.put("message", "Gmail is not connected. Click 'Connect Gmail' first.");
@@ -399,7 +488,28 @@ public class HackathonController {
         return ResponseEntity.ok(map);
     }
 
-    // ── Helper ──
+    // ── Helpers ──
+
+    @SuppressWarnings("unchecked")
+    private static <T> ResponseEntity<T> unauthorized() {
+        return (ResponseEntity<T>) ResponseEntity.status(401).body(Map.of(
+                "error", "Authentication required.", "code", "UNAUTHENTICATED"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> ResponseEntity<T> forbidden() {
+        return (ResponseEntity<T>) ResponseEntity.status(403).body(Map.of(
+                "error", "You do not have access to this resource.", "code", "FORBIDDEN"));
+    }
+
+    /** 404 when the hackathon does not exist, 403 when it belongs to someone else. */
+    @SuppressWarnings("unchecked")
+    private static <T> ResponseEntity<T> ownershipFailure(int hackathonId) {
+        if (HackathonDAO.getById(hackathonId) == null) {
+            return (ResponseEntity<T>) ResponseEntity.notFound().build();
+        }
+        return forbidden();
+    }
 
     private Map<String, Object> stageToMap(Stage s) {
         Map<String, Object> map = new HashMap<>();

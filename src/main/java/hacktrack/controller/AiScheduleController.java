@@ -4,6 +4,7 @@ import hacktrack.ai.AiScheduleException;
 import hacktrack.ai.AiScheduleService;
 import hacktrack.model.Hackathon;
 import hacktrack.dao.HackathonDAO;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,9 +59,12 @@ public class AiScheduleController {
      * stages and dates that were found. Does not modify the database.
      */
     @PostMapping("/hackathons/{id}/ai-schedule")
-    public ResponseEntity<Object> analyze(@PathVariable int id, @RequestBody(required = false) Map<String, Object> body) {
+    public ResponseEntity<Object> analyze(@PathVariable int id, @RequestBody(required = false) Map<String, Object> body,
+                                          HttpServletRequest request) {
         Map<String, Object> input = body != null ? body : new HashMap<>();
         try {
+            ResponseEntity<Object> denied = requireOwnership(id, request);
+            if (denied != null) return denied;
             Hackathon hackathon = HackathonDAO.getById(id);
             if (hackathon == null) {
                 return ResponseEntity.status(404).body(errorBody("HACKATHON_NOT_FOUND", "Hackathon not found."));
@@ -86,9 +90,12 @@ public class AiScheduleController {
      * system pick them up.
      */
     @PostMapping("/hackathons/{id}/ai-schedule/apply")
-    public ResponseEntity<Object> apply(@PathVariable int id, @RequestBody(required = false) Map<String, Object> body) {
+    public ResponseEntity<Object> apply(@PathVariable int id, @RequestBody(required = false) Map<String, Object> body,
+                                        HttpServletRequest request) {
         Map<String, Object> input = body != null ? body : new HashMap<>();
         try {
+            ResponseEntity<Object> denied = requireOwnership(id, request);
+            if (denied != null) return denied;
             Hackathon hackathon = HackathonDAO.getById(id);
             if (hackathon == null) {
                 return ResponseEntity.status(404).body(errorBody("HACKATHON_NOT_FOUND", "Hackathon not found."));
@@ -112,6 +119,26 @@ public class AiScheduleController {
     }
 
     // ── Helpers ──
+
+    /**
+     * Returns a 401/403/404 response when the caller may not work on this
+     * hackathon, or null when the caller owns it.
+     */
+    private static ResponseEntity<Object> requireOwnership(int hackathonId, HttpServletRequest request) {
+        Integer userId = AuthController.currentUserId(request);
+        if (userId == null) {
+            return ResponseEntity.status(401).body(errorBody("UNAUTHENTICATED", "Authentication required."));
+        }
+        Hackathon hackathon = HackathonDAO.getById(hackathonId);
+        if (hackathon == null) {
+            return ResponseEntity.status(404).body(errorBody("HACKATHON_NOT_FOUND", "Hackathon not found."));
+        }
+        if (hackathon.getOwnerId() != userId) {
+            return ResponseEntity.status(403).body(errorBody("FORBIDDEN",
+                    "You do not have access to this hackathon."));
+        }
+        return null;
+    }
 
     private static List<AiScheduleService.StageSelection> parseSelections(Object raw) {
         List<AiScheduleService.StageSelection> selections = new ArrayList<>();

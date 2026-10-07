@@ -10,6 +10,7 @@ public class Hackathon {
     private LocalDateTime createdAt;
     private String statusString;
     private int stageCount;
+    private int ownerId;
 
     public Hackathon() {
         this.id = 0;
@@ -19,6 +20,7 @@ public class Hackathon {
         this.createdAt = LocalDateTime.now();
         this.statusString = "?";
         this.stageCount = 0;
+        this.ownerId = 0;
     }
 
     public Hackathon(int id, String name, String websiteUrl, boolean isStarred) {
@@ -29,6 +31,7 @@ public class Hackathon {
         this.createdAt = LocalDateTime.now();
         this.statusString = "?";
         this.stageCount = 0;
+        this.ownerId = 0;
     }
 
     public int getId() { return id; }
@@ -51,6 +54,9 @@ public class Hackathon {
 
     public String getStatusString() { return statusString; }
     public void setStatusString(String s) { this.statusString = s; }
+
+    public int getOwnerId() { return ownerId; }
+    public void setOwnerId(int ownerId) { this.ownerId = ownerId; }
 
     public boolean isActive() {
         return createdAt != null;
