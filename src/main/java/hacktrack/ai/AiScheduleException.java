@@ -32,18 +32,40 @@ public class AiScheduleException extends RuntimeException {
 
     private final Code code;
 
+    /** HTTP status the website itself returned; 0 when it did not come from one. */
+    private final int sourceHttpStatus;
+
     public AiScheduleException(Code code, String userMessage) {
-        super(userMessage);
-        this.code = code;
+        this(code, userMessage, null, 0);
     }
 
     public AiScheduleException(Code code, String userMessage, Throwable cause) {
+        this(code, userMessage, cause, 0);
+    }
+
+    /**
+     * @param sourceHttpStatus HTTP status the website returned, or 0 when the
+     *                         failure was a network/timeout error rather than an
+     *                         HTTP status the server actually sent
+     */
+    public AiScheduleException(Code code, String userMessage, Throwable cause, int sourceHttpStatus) {
         super(userMessage, cause);
         this.code = code;
+        this.sourceHttpStatus = sourceHttpStatus;
     }
 
     public Code getCode() {
         return code;
+    }
+
+    /**
+     * HTTP status the website returned for this failure, or 0 when there was none.
+     *
+     * <p>Used to decide whether a blocked-by-bot status (403) may be retried
+     * through the headless-browser fallback.
+     */
+    public int getSourceHttpStatus() {
+        return sourceHttpStatus;
     }
 
     /** HTTP status the controller should answer with for this failure. */

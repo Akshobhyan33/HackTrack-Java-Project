@@ -110,7 +110,14 @@ public class WebPageFetcher {
      */
     public List<FetchedPage> fetchSite(String rawUrl) {
         URI baseUri = normalizeUrl(rawUrl);
-        FetchedPage base = fetchPage(baseUri);
+        FetchedPage base;
+        try {
+            base = fetchPage(baseUri);
+        } catch (AiScheduleException e) {
+            // The static request was refused (for example HTTP 403 from bot
+            // protection). Give the headless browser one chance before failing.
+            base = renderBlockedPage(e, baseUri);
+        }
         base = renderIfInsufficient(base);
 
         List<FetchedPage> pages = new ArrayList<>();
@@ -196,6 +203,44 @@ public class WebPageFetcher {
     }
 
     /**
+     * Gives the existing headless-browser fallback a chance when the plain HTTP
+     * request was refused with HTTP 403, which is how bot protection answers a
+     * server-side client while letting a real browser through.
+     *
+     * <p>The attempt is strictly additive and only ever applies to HTTP 403 on
+     * the supplied page: when the fallback is disabled, the URL fails the SSRF
+     * check, Chrome cannot start, or the rendered page holds no readable text,
+     * the original HTTP 403 exception is rethrown unchanged so the existing
+     * error message and error mapping stay exactly as they were.
+     */
+    private FetchedPage renderBlockedPage(AiScheduleException httpError, URI uri) {
+        boolean blocked = httpError.getCode() == AiScheduleException.Code.WEBSITE_UNAVAILABLE
+                && httpError.getSourceHttpStatus() == 403;
+        if (!blocked || !properties.isRenderFallbackEnabled()) {
+            throw httpError;
+        }
+
+        FetchedPage rendered;
+        try {
+            rendered = renderedPageFetcher.render(uri);
+        } catch (AiScheduleException e) {
+            // UrlSafety rejected the address before any browser started:
+            // keep the original HTTP error rather than leaking that detail.
+            throw httpError;
+        }
+
+        int threshold = Math.max(1, properties.getMinTextCharsForRenderFallback());
+        if (!isWorthUsing(rendered, "", threshold)) {
+            System.out.println("AI schedule: headless rendering did not get past the HTTP 403 for "
+                    + uri + " — keeping the HTTP error.");
+            throw httpError;
+        }
+        System.out.println("AI schedule: headless rendering got past the HTTP 403 for " + uri
+                + " (" + rendered.getText().length() + " readable characters).");
+        return rendered;
+    }
+
+    /**
      * Decides whether the headless render should replace the static HTTP text.
      *
      * <p>The render has to be longer than what the HTTP path already produced,
@@ -258,7 +303,9 @@ public class WebPageFetcher {
             throw new AiScheduleException(AiScheduleException.Code.WEBSITE_UNAVAILABLE,
                     status == 404
                             ? "That page was not found (404). Check the official URL."
-                            : "The website returned an error (HTTP " + status + ").");
+                            : "The website returned an error (HTTP " + status + ").",
+                    null,
+                    status);
         }
 
         byte[] body;

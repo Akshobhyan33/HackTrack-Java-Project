@@ -11,8 +11,12 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -67,18 +71,18 @@ public class RenderedPageFetcher {
 
             ChromeOptions options = new ChromeOptions();
             options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
-            options.addArguments(
-                    "--headless=new",
-                    "--disable-gpu",
-                    "--disable-dev-shm-usage",
-                    "--disable-extensions",
-                    "--disable-background-networking",
-                    "--disable-background-timer-throttling",
-                    "--disable-renderer-backgrounding",
-                    "--mute-audio",
-                    "--window-size=1280,2400",
-                    "--user-agent=Mozilla/5.0 (compatible; HackTrackScheduleBot/1.0)");
-            options.addArguments("--lang=en-US");
+            options.addArguments(chromeArguments(needsNoSandbox()));
+
+            // The Docker image pins the browser and driver locations; local
+            // development has neither variable set and keeps automatic discovery.
+            String chromeBinary = existingFile(System.getenv("CHROME_BIN"));
+            if (chromeBinary != null) {
+                options.setBinary(chromeBinary);
+            }
+            String driverPath = existingFile(System.getenv("CHROMEDRIVER_PATH"));
+            if (driverPath != null && System.getProperty("webdriver.chrome.driver") == null) {
+                System.setProperty("webdriver.chrome.driver", driverPath);
+            }
 
             driver = new ChromeDriver(service, options);
             Duration budget = Duration.ofSeconds(Math.max(5, properties.getRenderTimeoutSeconds()));
@@ -212,6 +216,79 @@ public class RenderedPageFetcher {
     private static String jsString(WebDriver driver, String script, Object... args) {
         Object result = execute(driver, script, args);
         return result instanceof String value ? value : null;
+    }
+
+    // ── Container support ──
+
+    /**
+     * Command line passed to headless Chrome.
+     *
+     * @param noSandbox true when Chrome must run without its process sandbox
+     */
+    static List<String> chromeArguments(boolean noSandbox) {
+        List<String> args = new ArrayList<>(List.of(
+                "--headless=new",
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--disable-extensions",
+                "--disable-background-networking",
+                "--disable-background-timer-throttling",
+                "--disable-renderer-backgrounding",
+                "--mute-audio",
+                "--window-size=1280,2400",
+                "--user-agent=Mozilla/5.0 (compatible; HackTrackScheduleBot/1.0)",
+                "--lang=en-US"));
+        if (noSandbox) {
+            // Inside a container the setuid sandbox helper is usually unusable
+            // (the runtime commonly enables no-new-privileges), and Chrome exits
+            // instead of starting. The SSRF protection is unaffected: UrlSafety
+            // still decides which URL the browser may open at all.
+            args.add("--no-sandbox");
+            args.add("--disable-setuid-sandbox");
+        }
+        return args;
+    }
+
+    /**
+     * True when Chrome must start without its process sandbox.
+     *
+     * <p>Overridable with {@code -Dhacktrack.ai.chromeNoSandbox=true|false};
+     * otherwise containerisation is detected from {@code /.dockerenv} and
+     * {@code /proc/1/cgroup}, so plain local development keeps the sandbox.
+     */
+    static boolean needsNoSandbox() {
+        String override = System.getProperty("hacktrack.ai.chromeNoSandbox");
+        if (override != null && !override.isBlank()) {
+            return Boolean.parseBoolean(override);
+        }
+        return isContainerized();
+    }
+
+    /** True when running inside a Docker/container runtime. */
+    static boolean isContainerized() {
+        if (Files.exists(Path.of("/.dockerenv"))) {
+            return true;
+        }
+        try {
+            String cgroup = Files.readString(Path.of("/proc/1/cgroup"));
+            return cgroup.contains("docker") || cgroup.contains("containerd")
+                    || cgroup.contains("kubepods") || cgroup.contains("lxc");
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+            // Not Linux, or not readable: behave like a normal host.
+            return false;
+        }
+    }
+
+    /** Returns the path when it is set and points at an existing file. */
+    private static String existingFile(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Files.exists(Path.of(value)) ? value : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     /** True when a rendered page produced at least this many characters of text. */
